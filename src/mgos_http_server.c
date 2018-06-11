@@ -212,7 +212,9 @@ static void mgos_http_ev(struct mg_connection *c, int ev, void *p,
         if(s_http_server_opts.document_root != NULL){
             struct http_message *hm = (struct http_message *)p;
             LOG(LL_INFO,("%p %. *s %. *s",c,(int)hm->method.len,hm->mthod.p,(int)hm->uri.len,hm->uri.p));
+          (void)hm;
         }
+      
 #endif
       {
         mg_http_send_error(c, 404, "Not Found");
