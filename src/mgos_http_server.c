@@ -198,7 +198,7 @@ static void mgos_http_ev(struct mg_connection *c, int ev, void *p,
       break;
     }
     case MG_EV_HTTP_REQUEST: {
-#if MG_ENABLE_FILESYSTEM
+#if MGOS_ENABLE_WEB_CONFIG
       if (s_http_server_opts.document_root != NULL) {
         struct http_message *hm = (struct http_message *) p;
         LOG(LL_INFO, ("%p %.*s %.*s", c, (int) hm->method.len, hm->method.p,
@@ -207,13 +207,6 @@ static void mgos_http_ev(struct mg_connection *c, int ev, void *p,
         mg_serve_http(c, p, s_http_server_opts);
         (void) hm;
       } else
-
-#else if MGOS_ENABLE_WEB_CONFIG
-        if(s_http_server_opts.document_root != NULL){
-            struct http_message *hm = (struct http_message *)p;
-            LOG(LL_INFO,("%p %. *s %. *s",c,(int)hm->method.len,hm->mthod.p,(int)hm->uri.len,hm->uri.p));
-          (void)hm;
-        }
       
 #endif
       {
