@@ -22,8 +22,8 @@ config_schema:
 
 cdefs:
   MGOS_ENABLE_WEB_CONFIG: 1
-  MGOS_ENABLE_FILE_UPLOAD: 1
-  MGOS_ENABLE_TUNNEL: 1
+  MGOS_ENABLE_FILE_UPLOAD: 0
+  MGOS_ENABLE_TUNNEL: 0
 
 init_after:
   - atca
