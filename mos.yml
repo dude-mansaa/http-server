@@ -8,7 +8,7 @@ sources:
 includes:
   - include
 config_schema:
-  - ["http", "o", {title: "Light Server"}]
+  - ["http", "o", {title: "HTTP Server"}]
   - ["http.enable", "b", true, {title: "Enable HTTP Server"}]
   - ["http.listen_addr", "s", "80", {title: "Listening port / address"}]
   - ["http.document_root", "s", "/", {title: "Root for serving files. Setting to empty disables file serving."}]
@@ -20,10 +20,10 @@ config_schema:
   - ["http.auth_domain", "s", {title: "Enable authentication of all HTTP requests"}]
   - ["http.auth_file", "s", {title: "Password file to use for auth"}]
 
-#cdefs:
-  #MGOS_ENABLE_WEB_CONFIG: 1
-  #MGOS_ENABLE_FILE_UPLOAD: 1
-  #MGOS_ENABLE_TUNNEL: 1
+cdefs:
+  MGOS_ENABLE_WEB_CONFIG: 0
+  MGOS_ENABLE_FILE_UPLOAD: 1
+  MGOS_ENABLE_TUNNEL: 0
 
 init_after:
   - atca
@@ -37,4 +37,4 @@ tags:
 
 # Temporary, while root manifest change propagates (2018/03/29).
 libs:
-  - origin: https://github.com/dude-mansaa/mongoose
+  - origin: https://github.com/mongoose-os-libs/mongoose
