@@ -20,8 +20,8 @@ config_schema:
   - ["http.auth_domain", "s", {title: "Enable authentication of all HTTP requests"}]
   - ["http.auth_file", "s", {title: "Password file to use for auth"}]
 
-cdefs:
-  MGOS_ENABLE_WEB_CONFIG: 1
+#cdefs:
+  #MGOS_ENABLE_WEB_CONFIG: 1
   #MGOS_ENABLE_FILE_UPLOAD: 1
   #MGOS_ENABLE_TUNNEL: 1
 
