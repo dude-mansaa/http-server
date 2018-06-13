@@ -60,6 +60,8 @@ static void send_cfg(const void *cfg, const struct mgos_conf_entry *schema,
 static void conf_handler(struct mg_connection *c, int ev, void *p,
                          void *user_data) {
   struct http_message *hm = (struct http_message *) p;
+  LOG(LL_DEBUG,
+        ("got request http"));
   if (ev != MG_EV_HTTP_REQUEST) return;
   LOG(LL_DEBUG, ("[%.*s] requested", (int) hm->uri.len, hm->uri.p));
   struct mbuf jsmb;
@@ -217,7 +219,7 @@ static void mgos_http_ev(struct mg_connection *c, int ev, void *p,
 }
 
 static void ev_handler(struct mg_connection *nc, int ev, void *p,void *user_data) {
-  LOG(LL_INFO, ("HTTP Server got request"));
+  LOG(LL_DEBUG, ("HTTP Server got request"));
   if (ev == MG_EV_HTTP_REQUEST) {
     mg_serve_http(nc, (struct http_message *) p, s_http_server_opts);
   }
@@ -243,37 +245,37 @@ bool mgos_http_server_init(void) {
 
   struct mg_bind_opts opts;
   memset(&opts, 0, sizeof(opts));
-#if MG_ENABLE_SSL
-  opts.ssl_cert = mgos_sys_config_get_http_ssl_cert();
-  opts.ssl_key = mgos_sys_config_get_http_ssl_key();
-  opts.ssl_ca_cert = mgos_sys_config_get_http_ssl_ca_cert();
-#if CS_PLATFORM == CS_P_ESP8266
+// #if MG_ENABLE_SSL
+//   opts.ssl_cert = mgos_sys_config_get_http_ssl_cert();
+//   opts.ssl_key = mgos_sys_config_get_http_ssl_key();
+//   opts.ssl_ca_cert = mgos_sys_config_get_http_ssl_ca_cert();
+// #if CS_PLATFORM == CS_P_ESP8266
 /*
  * ESP8266 cannot handle DH of any kind, unless there's hardware acceleration,
  * it's too slow.
  */
-#if defined(MGOS_HAVE_ATCA)
-  if (mbedtls_atca_is_available()) {
-    opts.ssl_cipher_suites =
-        "TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256:"
-        "TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256:"
-        "TLS-ECDH-ECDSA-WITH-AES-128-GCM-SHA256:"
-        "TLS-ECDH-ECDSA-WITH-AES-128-CBC-SHA256:"
-        "TLS-ECDH-ECDSA-WITH-AES-128-CBC-SHA:"
-        "TLS-ECDH-RSA-WITH-AES-128-GCM-SHA256:"
-        "TLS-ECDH-RSA-WITH-AES-128-CBC-SHA256:"
-        "TLS-ECDH-RSA-WITH-AES-128-CBC-SHA:"
-        "TLS-RSA-WITH-AES-128-GCM-SHA256:"
-        "TLS-RSA-WITH-AES-128-CBC-SHA256:"
-        "TLS-RSA-WITH-AES-128-CBC-SHA";
-  } else
-#endif /* defined(MGOS_HAVE_ATCA) */
-    opts.ssl_cipher_suites =
-        "TLS-RSA-WITH-AES-128-GCM-SHA256:"
-        "TLS-RSA-WITH-AES-128-CBC-SHA256:"
-        "TLS-RSA-WITH-AES-128-CBC-SHA";
-#endif /* CS_PLATFORM == CS_P_ESP8266 */
-#endif /* MG_ENABLE_SSL */
+// #if defined(MGOS_HAVE_ATCA)
+//   if (mbedtls_atca_is_available()) {
+//     opts.ssl_cipher_suites =
+//         "TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256:"
+//         "TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256:"
+//         "TLS-ECDH-ECDSA-WITH-AES-128-GCM-SHA256:"
+//         "TLS-ECDH-ECDSA-WITH-AES-128-CBC-SHA256:"
+//         "TLS-ECDH-ECDSA-WITH-AES-128-CBC-SHA:"
+//         "TLS-ECDH-RSA-WITH-AES-128-GCM-SHA256:"
+//         "TLS-ECDH-RSA-WITH-AES-128-CBC-SHA256:"
+//         "TLS-ECDH-RSA-WITH-AES-128-CBC-SHA:"
+//         "TLS-RSA-WITH-AES-128-GCM-SHA256:"
+//         "TLS-RSA-WITH-AES-128-CBC-SHA256:"
+//         "TLS-RSA-WITH-AES-128-CBC-SHA";
+//   } else
+// #endif /* defined(MGOS_HAVE_ATCA) */
+//     opts.ssl_cipher_suites =
+//         "TLS-RSA-WITH-AES-128-GCM-SHA256:"
+//         "TLS-RSA-WITH-AES-128-CBC-SHA256:"
+//         "TLS-RSA-WITH-AES-128-CBC-SHA";
+// #endif CS_PLATFORM == CS_P_ESP8266
+// #endif /* MG_ENABLE_SSL */
   s_listen_conn =
       mg_bind_opt(mgos_get_mgr(), mgos_sys_config_get_http_listen_addr(),
                   ev_handler, NULL, opts);
@@ -343,7 +345,7 @@ bool mgos_http_server_init(void) {
   s_http_server_opts.document_root="/";
   s_http_server_opts.enable_directory_listing="yes";
   mg_register_http_endpoint_opt(s_listen_conn,"/api",ev_handler,s_http_server_opts);
-  
+  mgos_register_http_endpoint("/api",ev_handler,NULL);
 //#if MGOS_ENABLE_WEB_CONFIG
   mgos_register_http_endpoint("/conf/", conf_handler, NULL);
   mgos_register_http_endpoint("/reboot", reboot_handler, NULL);
