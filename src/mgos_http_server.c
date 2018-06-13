@@ -43,13 +43,9 @@
 
 #define MGOS_F_RELOAD_CONFIG MG_F_USER_5
 
-#if MG_ENABLE_FILESYSTEM
-static struct mg_serve_http_opts s_http_server_opts;
-#endif
+
 static struct mg_connection *s_listen_conn;
 static struct mg_connection *s_listen_conn_tun;
-
-#if MGOS_ENABLE_WEB_CONFIG
 
 #define JSON_HEADERS "Connection: close\r\nContent-Type: application/json"
 
@@ -148,9 +144,9 @@ static void ro_vars_handler(struct mg_connection *c, int ev, void *p,
   c->flags |= MG_F_SEND_AND_CLOSE;
   (void) user_data;
 }
-#endif /* MGOS_ENABLE_WEB_CONFIG */
 
-#if MGOS_ENABLE_FILE_UPLOAD
+
+
 static struct mg_str upload_fname(struct mg_connection *nc,
                                   struct mg_str fname) {
   struct mg_str res = {NULL, 0};
@@ -165,9 +161,9 @@ static void upload_handler(struct mg_connection *c, int ev, void *p,
                            void *user_data) {
   mg_file_upload_handler(c, ev, p, upload_fname, user_data);
 }
-#endif
 
-#if MGOS_ENABLE_TUNNEL
+
+
 static void on_net_ready(int ev, void *evd, void *arg) {
   if (s_listen_conn_tun != NULL) {
     /* Depending on the WiFi status, allow or disallow tunnel reconnection */
@@ -185,7 +181,7 @@ static void on_net_ready(int ev, void *evd, void *arg) {
 
   (void) arg;
 }
-#endif /* MGOS_ENABLE_TUNNEL */
+
 
 static void mgos_http_ev(struct mg_connection *c, int ev, void *p,
                          void *user_data) {
@@ -220,6 +216,13 @@ static void mgos_http_ev(struct mg_connection *c, int ev, void *p,
   (void) user_data;
 }
 
+static void ev_handler(struct mg_connection *nc, int ev, void *p,void *user_data) {
+  LOG(LL_INFO, ("HTTP Server got request"));
+  if (ev == MG_EV_HTTP_REQUEST) {
+    mg_serve_http(nc, (struct http_message *) p, s_http_server_opts);
+  }
+}
+
 bool mgos_http_server_init(void) {
   if (!mgos_sys_config_get_http_enable()) {
     return true;
@@ -230,13 +233,13 @@ bool mgos_http_server_init(void) {
     return true; /* At this moment it is just warning */
   }
 
-#if MG_ENABLE_FILESYSTEM
-  s_http_server_opts.document_root = mgos_sys_config_get_http_document_root();
-  s_http_server_opts.hidden_file_pattern =
-      mgos_sys_config_get_http_hidden_files();
-  s_http_server_opts.auth_domain = mgos_sys_config_get_http_auth_domain();
-  s_http_server_opts.global_auth_file = mgos_sys_config_get_http_auth_file();
-#endif
+// #if MG_ENABLE_FILESYSTEM
+//   s_http_server_opts.document_root = mgos_sys_config_get_http_document_root();
+//   s_http_server_opts.hidden_file_pattern =
+//       mgos_sys_config_get_http_hidden_files();
+//   s_http_server_opts.auth_domain = mgos_sys_config_get_http_auth_domain();
+//   s_http_server_opts.global_auth_file = mgos_sys_config_get_http_auth_file();
+// #endif
 
   struct mg_bind_opts opts;
   memset(&opts, 0, sizeof(opts));
@@ -285,65 +288,70 @@ bool mgos_http_server_init(void) {
 
   mg_set_protocol_http_websocket(s_listen_conn);
   LOG(LL_INFO,
-      ("HTTP server started on [%s]%s", mgos_sys_config_get_http_listen_addr(),
+      ("Light server started on [%s]%s", mgos_sys_config_get_http_listen_addr(),
 #if MG_ENABLE_SSL
        (opts.ssl_cert ? " (SSL)" : "")
 #else
        ""
 #endif
            ));
+  
 
-#if MGOS_ENABLE_TUNNEL
-  if (mgos_sys_config_get_http_tunnel_enable() &&
-      mgos_sys_config_get_device_id() != NULL &&
-      mgos_sys_config_get_device_password() != NULL) {
-    char *tun_addr = NULL;
-    /*
-     * NOTE: we won't free `tun_addr`, because when reconnect happens, this
-     * address string will be accessed again.
-     */
-    if (mg_asprintf(&tun_addr, 0, "ws://%s:%s@%s.%s",
-                    mgos_sys_config_get_device_id(),
-                    mgos_sys_config_get_device_password(),
-                    mgos_sys_config_get_device_id(),
-                    mgos_sys_config_get_http_tunnel_addr()) < 0) {
-      return false;
-    }
-    s_listen_conn_tun =
-        mg_bind_opt(mgos_get_mgr(), tun_addr, mgos_http_ev, opts);
+// #if MGOS_ENABLE_TUNNEL
+//   if (mgos_sys_config_get_http_tunnel_enable() &&
+//       mgos_sys_config_get_device_id() != NULL &&
+//       mgos_sys_config_get_device_password() != NULL) {
+//     char *tun_addr = NULL;
+//     /*
+//      * NOTE: we won't free `tun_addr`, because when reconnect happens, this
+//      * address string will be accessed again.
+//      */
+//     if (mg_asprintf(&tun_addr, 0, "ws://%s:%s@%s.%s",
+//                     mgos_sys_config_get_device_id(),
+//                     mgos_sys_config_get_device_password(),
+//                     mgos_sys_config_get_device_id(),
+//                     mgos_sys_config_get_http_tunnel_addr()) < 0) {
+//       return false;
+//     }
+//     s_listen_conn_tun =
+//         mg_bind_opt(mgos_get_mgr(), tun_addr, mgos_http_ev, opts);
 
-    if (s_listen_conn_tun == NULL) {
-      LOG(LL_ERROR, ("Error binding to [%s]", tun_addr));
-      return false;
-    } else {
-      /*
-       * Network is not yet ready, so we need to set a flag which prevents the
-       * tunnel from reconnecting. The flag will be cleared when wifi connection
-       * is ready.
-       */
-      s_listen_conn_tun->flags |= MG_F_TUN_DO_NOT_RECONNECT;
-      mgos_event_add_group_handler(MGOS_EVENT_GRP_NET, on_net_ready, NULL);
-    }
+//     if (s_listen_conn_tun == NULL) {
+//       LOG(LL_ERROR, ("Error binding to [%s]", tun_addr));
+//       return false;
+//     } else {
+//       /*
+//        * Network is not yet ready, so we need to set a flag which prevents the
+//        * tunnel from reconnecting. The flag will be cleared when wifi connection
+//        * is ready.
+//        */
+//       s_listen_conn_tun->flags |= MG_F_TUN_DO_NOT_RECONNECT;
+//       mgos_event_add_group_handler(MGOS_EVENT_GRP_NET, on_net_ready, NULL);
+//     }
 
-    mg_set_protocol_http_websocket(s_listen_conn_tun);
-    LOG(LL_INFO, ("Tunneled HTTP server started on [%s]%s", tun_addr,
-#if MG_ENABLE_SSL
-                  (opts.ssl_cert ? " (SSL)" : "")
-#else
-                  ""
-#endif
-                      ));
-  }
-#endif
-
-#if MGOS_ENABLE_WEB_CONFIG
+//     mg_set_protocol_http_websocket(s_listen_conn_tun);
+//     LOG(LL_INFO, ("Tunneled HTTP server started on [%s]%s", tun_addr,
+// #if MG_ENABLE_SSL
+//                   (opts.ssl_cert ? " (SSL)" : "")
+// #else
+//                   ""
+// #endif
+//                       ));
+//   }
+// #endif
+  struct mg_serve_http_opts s_http_server_opts;
+  s_http_server_opts.document_root="/";
+  s_http_server_opts.enable_directory_listing="yes";
+  mg_register_http_endpoint_opt(s_listen_conn,"/api",ev_handler,s_http_server_opts);
+  
+//#if MGOS_ENABLE_WEB_CONFIG
   mgos_register_http_endpoint("/conf/", conf_handler, NULL);
   mgos_register_http_endpoint("/reboot", reboot_handler, NULL);
   mgos_register_http_endpoint("/ro_vars", ro_vars_handler, NULL);
-#endif
-#if MGOS_ENABLE_FILE_UPLOAD
-  mgos_register_http_endpoint("/upload", upload_handler, NULL);
-#endif
+//#endif
+// #if MGOS_ENABLE_FILE_UPLOAD
+//   mgos_register_http_endpoint("/upload", upload_handler, NULL);
+// #endif
 
   return true;
 }
