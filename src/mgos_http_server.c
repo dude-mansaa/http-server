@@ -276,7 +276,7 @@ bool mgos_http_server_init(void) {
 #endif /* MG_ENABLE_SSL */
   s_listen_conn =
       mg_bind_opt(mgos_get_mgr(), mgos_sys_config_get_http_listen_addr(),
-                  mgos_http_ev, NULL, opts);
+                  ev_handler, NULL, opts);
 
   if (!s_listen_conn) {
     LOG(LL_ERROR,
